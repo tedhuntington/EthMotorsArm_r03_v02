@@ -223,14 +223,20 @@ static void print_ipaddress(void)
 
 static void read_macaddress(u8_t *mac)
 {
-	#if CONF_AT24MAC_ADDRESS != 0
+	
+	//struct i2c_m_sync_desc I2C_0;
+#if CONF_AT24MAC_ADDRESS != 0
 	uint8_t addr = 0x9A;
-	i2c_m_sync_enable(&I2C_AT24MAC);
-	i2c_m_sync_set_slaveaddr(&I2C_AT24MAC, CONF_AT24MAC_ADDRESS, I2C_M_SEVEN);
+/*	i2c_m_sync_enable(&I2C_AT24MAC);
+	i2c_m_sync_set_slaveaddr(&I2C_AT24MAC, CONF_AT24MAC_ADDRESS, I2C_M_SEVEN);c	
 	io_write(&(I2C_AT24MAC.io), &addr, 1);
-	io_read(&(I2C_AT24MAC.io), mac, 6);
+	io_read(&(I2C_AT24MAC.io), mac, 6);*/
+	i2c_m_sync_enable(&I2C_0);
+	i2c_m_sync_set_slaveaddr(&I2C_0, CONF_AT24MAC_ADDRESS, I2C_M_SEVEN);
+	io_write(&(I2C_0.io), &addr, 1);
+	io_read(&(I2C_0.io), mac, 6);
 
-	#else
+#else
 	/* set mac to 0x11 if no EEPROM mounted */
 	//memset(mac, 0x11, 6);
 	mac[0]=0x74;
@@ -239,7 +245,7 @@ static void read_macaddress(u8_t *mac)
 	mac[3]=0xda;
 	mac[4]=0x89;
 	mac[5]=0x85;
-	#endif
+#endif
 }
 
 #if 0 

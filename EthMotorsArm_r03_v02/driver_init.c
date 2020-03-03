@@ -126,6 +126,7 @@ void I2C_0_init(void)
 	I2C_0_PORT_init();
 }
 
+
 /**
  * \brief Timer initialization function
  *
