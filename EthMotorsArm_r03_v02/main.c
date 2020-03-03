@@ -517,6 +517,7 @@ void udpserver_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, struct ip_ad
 int InitializeMotors(void) 
 {
 	
+	int i;
 	
 	//set number of clocks in motor duty cycle
 	//is 7 (but was 14), 7 timer2 interrupts make 1 full motor duty cycle
@@ -524,39 +525,35 @@ int InitializeMotors(void)
 	MotorDutyCycleClock=ROBOT_MOTORS_DEFAULT_MOTOR_DUTY_CYCLE_CLK;
 	
 	
-	NumMotors=4;
+	NumMotors=8;
 	//Clear the robot status array
 	memset(Motor,sizeof(MotorStatus)*NumMotors,0);
 
 	//Motor[0].flags|=MOTOR_DRIVER_USES_PULSE_PIN;
 	Motor[0].DirPin=GPIO(GPIO_PORTB, 13);
 	Motor[0].PulsePin=GPIO(GPIO_PORTB, 12);
-	gpio_set_pin_direction(Motor[0].DirPin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[0].DirPin,false);
-	gpio_set_pin_direction(Motor[0].PulsePin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[0].PulsePin,false);
-	
 	Motor[1].DirPin=GPIO(GPIO_PORTB, 11);
 	Motor[1].PulsePin=GPIO(GPIO_PORTB, 10);
-	gpio_set_pin_direction(Motor[1].DirPin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[1].DirPin,false);
-	gpio_set_pin_direction(Motor[1].PulsePin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[1].PulsePin,false);
-
 	Motor[2].DirPin=GPIO(GPIO_PORTA, 11);
 	Motor[2].PulsePin=GPIO(GPIO_PORTA, 10);
-	gpio_set_pin_direction(Motor[2].DirPin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[2].DirPin,false);
-	gpio_set_pin_direction(Motor[2].PulsePin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[2].PulsePin,false);
-
 	Motor[3].DirPin=GPIO(GPIO_PORTA, 9);
 	Motor[3].PulsePin=GPIO(GPIO_PORTA, 8);
-	gpio_set_pin_direction(Motor[2].DirPin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[2].DirPin,false);
-	gpio_set_pin_direction(Motor[2].PulsePin,GPIO_DIRECTION_OUT);
-	gpio_set_pin_level(Motor[2].PulsePin,false);
 
+	Motor[4].DirPin=GPIO(GPIO_PORTA, 7);
+	Motor[4].PulsePin=GPIO(GPIO_PORTA, 6);
+	Motor[5].DirPin=GPIO(GPIO_PORTA, 5);
+	Motor[5].PulsePin=GPIO(GPIO_PORTA, 4);
+	Motor[6].DirPin=GPIO(GPIO_PORTB, 9);
+	Motor[6].PulsePin=GPIO(GPIO_PORTB, 8);
+	Motor[7].DirPin=GPIO(GPIO_PORTB, 7);
+	Motor[7].PulsePin=GPIO(GPIO_PORTB, 6);
+	
+	for(i=0;i<NumMotors;i++) {
+		gpio_set_pin_direction(Motor[i].DirPin,GPIO_DIRECTION_OUT);
+		gpio_set_pin_level(Motor[i].DirPin,false);
+		gpio_set_pin_direction(Motor[i].PulsePin,GPIO_DIRECTION_OUT);
+		gpio_set_pin_level(Motor[i].PulsePin,false);
+	}
 
 	return(1);
 } //int InitializeMotors(void)
