@@ -31,6 +31,8 @@ int MotorDutyCycleClock; //the time (in us) of each timer2 interrupt when the mo
 volatile static u32_t systick_timems;
 volatile static bool  gmac_recv_flag = false;
 static bool           link_up   = false;
+u8_t    mac[6];
+static bool got_ip = false;
 
 struct udp_pcb *udpserver_pcb; //udp server
 //extern struct mac_async_descriptor MACIF; //is declared as ETHERNET_MAC_0 in driver_init.c
@@ -249,7 +251,7 @@ static void read_macaddress(u8_t *mac)
 }
 
 #if 0 
-//Process any kind of instruction - instrucitons are generalized so that this code is the same whether the instruciton came from ethernet, usart, or usart-esp
+//Process any kind of instruction - instructions are generalized so that this code is the same whether the instruciton came from ethernet, usart, or usart-esp
 void Process_Instruction(uint8_t Inst,uint32_t len,uint8_t type)
 {
 
@@ -525,7 +527,7 @@ int InitializeMotors(void)
 	MotorDutyCycleClock=ROBOT_MOTORS_DEFAULT_MOTOR_DUTY_CYCLE_CLK;
 	
 	
-	NumMotors=8;
+	NumMotors=16;
 	//Clear the robot status array
 	memset(Motor,sizeof(MotorStatus)*NumMotors,0);
 
@@ -548,6 +550,26 @@ int InitializeMotors(void)
 	Motor[7].DirPin=GPIO(GPIO_PORTB, 7);
 	Motor[7].PulsePin=GPIO(GPIO_PORTB, 6);
 	
+	Motor[8].DirPin=GPIO(GPIO_PORTB, 3);
+	Motor[8].PulsePin=GPIO(GPIO_PORTB, 2);
+	Motor[9].DirPin=GPIO(GPIO_PORTB, 1);
+	Motor[9].PulsePin=GPIO(GPIO_PORTB, 0);
+	Motor[10].DirPin=GPIO(GPIO_PORTC, 25);
+	Motor[10].PulsePin=GPIO(GPIO_PORTC, 24);
+	Motor[11].DirPin=GPIO(GPIO_PORTB, 25);
+	Motor[11].PulsePin=GPIO(GPIO_PORTB, 24);
+
+	Motor[12].DirPin=GPIO(GPIO_PORTB, 21);
+	Motor[12].PulsePin=GPIO(GPIO_PORTB, 20);
+	Motor[13].DirPin=GPIO(GPIO_PORTB, 19);
+	Motor[13].PulsePin=GPIO(GPIO_PORTB, 18);
+	Motor[14].DirPin=GPIO(GPIO_PORTB, 17);
+	Motor[14].PulsePin=GPIO(GPIO_PORTB, 16);
+	Motor[15].DirPin=GPIO(GPIO_PORTC, 19);
+	Motor[15].PulsePin=GPIO(GPIO_PORTC, 18);
+
+	
+	
 	for(i=0;i<NumMotors;i++) {
 		gpio_set_pin_direction(Motor[i].DirPin,GPIO_DIRECTION_OUT);
 		gpio_set_pin_level(Motor[i].DirPin,false);
@@ -559,13 +581,64 @@ int InitializeMotors(void)
 } //int InitializeMotors(void)
 
 
+int CheckWired(void) {
+	int32_t ret;
+
+	//try to bring up wired network
+
+	eth_ipstack_init();
+
+	//wait for wired network connection
+	do {
+		ret = ethernet_phy_get_link_status(&ETHERNET_PHY_0_desc, &link_up);
+		if (ret == ERR_NONE && link_up) {
+			break;
+		}
+	} while (true);
+
+
+	printf("Ethernet Connection established\n");
+	LWIP_MACIF_init(mac);  //tph: add LWIP callback for recvd input: ethernet_input()
+
+	//make this the default interface
+	netif_set_default(&LWIP_MACIF_desc);
+	
+	// Set callback function for netif status change 
+	netif_set_status_callback(&LWIP_MACIF_desc, status_callback);
+
+	//Set callback function for link status change
+	netif_set_link_callback(&LWIP_MACIF_desc, link_callback);
+		
+	mac_async_enable(&ETHERNET_MAC_0);
+
+	udpserver_pcb = udp_new();  //create udp server
+	udp_bind(udpserver_pcb, &LWIP_MACIF_desc.ip_addr.addr, UDP_PORT);   //port UDP_PORT 
+	udp_recv(udpserver_pcb, udpserver_recv, NULL);  //set udpserver callback function
+
+	//bring up the network interface - ned to do here so above interrupts are enabled
+#ifdef LWIP_DHCP
+	/* DHCP mode. */
+	if (ERR_OK != dhcp_start(&LWIP_MACIF_desc)) {
+		LWIP_ASSERT("ERR_OK != dhcp_start", 0);
+	}
+	printf("DHCP Started\r\n");
+#else
+	//needed for lwip 2.0: netif_set_link_up(&LWIP_MACIF_desc);
+	/* Static mode. */
+	netif_set_up(&LWIP_MACIF_desc);
+	printf("Static IP Address Assigned\r\n");
+#endif
+
+	return(1);
+
+}
+
 int main(void)
 {
 	struct io_descriptor *io;
 	int count;//,StartDHCP;
 	uint8_t OutStr[256];
 	int32_t ret;
-	u8_t    mac[6];
 	u8_t ReadBuffer[256];
 	//struct usart_async_status iostat;  //currently needed for usart async
 
@@ -592,6 +665,7 @@ int main(void)
 	//MACIF_example();
 	
 	ETHERNET_PHY_0_example();  //restarts autonegotiation
+
 
 	//init usart
 	usart_sync_get_io_descriptor(&USART_0, &io);
@@ -626,9 +700,14 @@ int main(void)
 	//below does not work for printf because printf calls _puts_r which must send one char at a time 
 	//while (usart_async_get_status(&USART_0, &iostat)==ERR_BUSY); 
 
+
 	mac_async_register_callback(&ETHERNET_MAC_0, MAC_ASYNC_RECEIVE_CB, (FUNC_PTR)mac_receive_cb);
 	mac_async_register_callback(&ETHERNET_MAC_0, MAC_ASYNC_TRANSMIT_CB, (FUNC_PTR)mac_transmit_cb);
 
+
+	CheckWired();
+
+#if 0 	
 	eth_ipstack_init();
 	do {
 		ret = ethernet_phy_get_link_status(&ETHERNET_PHY_0_desc, &link_up);
@@ -651,91 +730,46 @@ int main(void)
 		
 	mac_async_enable(&ETHERNET_MAC_0);
 
-//	//enable interrupts (global)
-//__enable_irq();
-
-//enable the GMAC interrupt
-//mac_async_enable_irq(&MACIF);
-
-
-
-
-
-//#if 0 
-	//udpecho_init(); //START UDP ECHO THREAD - requires netconn 
-	//start_udp();
 	udpserver_pcb = udp_new();  //create udp server
-	//IP4_ADDR(&forward_ip, 192, 168,   2, 254);
-//	udp_bind(udpserver_pcb, IP_ADDR_ANY, UDP_PORT);   //port UDP_PORT 
 	udp_bind(udpserver_pcb, &LWIP_MACIF_desc.ip_addr.addr, UDP_PORT);   //port UDP_PORT 
 	udp_recv(udpserver_pcb, udpserver_recv, NULL);  //set udpserver callback function
 
 
-#if 0 	
-	const int out_buf_size=4;
-	const char buf[]="test";
-
-	//send a udp packet
-	struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, out_buf_size * sizeof(char), PBUF_REF);
-	if (p!=0) {
-		p->payload = buf;
-		udp_sendto(udpserver_pcb, p, IP_ADDR_BROADCAST, 1234); //dest port
-		//udp_sendto(pcb, p, &forward_ip, fwd_port); //dest port
-		pbuf_free(p);
-	} //if (p!=0)
-#endif
-
-
-
-#if 0 
-	//enable interrupts
-	hri_gmac_write_NCR_reg(GMAC,GMAC_NCR_MPE|GMAC_NCR_RXEN|GMAC_NCR_TXEN);  //network control register - enable write read and management port
-	//hri_gmac_write_NCFGR_reg(GMAC,0xc0000|GMAC_NCFGR_FD|GMAC_NCFGR_SPD);  //network configuration register- /48, FD, SPD
-	hri_gmac_write_NCFGR_reg(GMAC,0xc0000|GMAC_NCFGR_FD|GMAC_NCFGR_CAF|GMAC_NCFGR_IRXER|GMAC_NCFGR_IRXFCS|GMAC_NCFGR_SPD);  //network configuration register- /48, FD, SPD
-	//hri_gmac_write_IMR_reg(&MACIF,GMAC_IMR_RCOMP);  //network configuration register- /48, FD, SPD
-	hri_gmac_write_IMR_reg(GMAC,GMAC_IMR_RCOMP|GMAC_IMR_RXUBR|GMAC_IMR_TCOMP|GMAC_IMR_ROVR|GMAC_IMR_PFNZ|GMAC_IMR_PTZ);  //interrupt mask register
-	//hri_gmac_write_IER_reg(GMAC,GMAC_IER_RCOMP|GMAC_IER_TCOMP|GMAC_IER_ROVR|GMAC_IER_PFNZ|GMAC_IER_PTZ);  //interrupt enable register
-	((Gmac *)GMAC)->IER.reg = GMAC_IER_RCOMP|GMAC_IER_RXUBR|GMAC_IER_TCOMP|GMAC_IER_ROVR|GMAC_IER_PFNZ|GMAC_IER_PTZ; 
-
-
-	//enable interrupts (global)
-	__enable_irq();
-
-	//enable the GMAC interrupt
-	mac_async_enable_irq(&ETHERNET_MAC_0);
-#endif
-
-	//enable interrupts
-	//hri_nvic_write_ISPR_reg(&MACIF,)
-//	NVIC_EnableIRQ(GMAC_IRQn);
-//	uint32_t IntStatus;
-//	IntStatus=__NVIC_GetEnableIRQ(GMAC_IRQn);
-
-	//enable interrupts (global)
-//	__enable_irq();
-	
-
-
 	//bring up the network interface - ned to do here so above interrupts are enabled
-	#ifdef LWIP_DHCP
+#ifdef LWIP_DHCP
 	/* DHCP mode. */
 	if (ERR_OK != dhcp_start(&LWIP_MACIF_desc)) {
 		LWIP_ASSERT("ERR_OK != dhcp_start", 0);
 	}
 	printf("DHCP Started\r\n");
-	#else
+#else
 	//needed for lwip 2.0: netif_set_link_up(&LWIP_MACIF_desc);
 	/* Static mode. */
 	netif_set_up(&LWIP_MACIF_desc);
 	printf("Static IP Address Assigned\r\n");
-	#endif
+#endif
+
+#endif
 
 	InitializeMotors(); //set initial settings of all motors
 	//currently motor timer stop DHCP from working
 	MotorTimer_Initialize();  //start timer for motor pwm
 
+	
 	/* Replace with your application code */
 	while (true) {
+
+		//if no wired connection yet, check for one
+
+
+
+	/* Print IP address info */
+	if (!got_ip && link_up && LWIP_MACIF_desc.ip_addr.addr) {
+//			link_up = false;
+		print_ipaddress();
+		got_ip = true;
+	}
+
 
 /*
 		if (StartDHCP) {
@@ -755,11 +789,6 @@ int main(void)
 		/* LWIP timers - ARP, DHCP, TCP, etc. */
 		sys_check_timeouts();
 
-		/* Print IP address info */
-		if (link_up && LWIP_MACIF_desc.ip_addr.addr) {
-			link_up = false;
-			print_ipaddress();
-		}
 
 		//netif_poll(&LWIP_MACIF_desc);  //tph need?
 
@@ -800,6 +829,10 @@ int main(void)
 
 
 	USART_1_input();  //check for usart1 input
+
+	//delay_ms(100);
+	
+	
 
 	}  //while(1)
 

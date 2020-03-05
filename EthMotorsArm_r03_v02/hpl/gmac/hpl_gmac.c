@@ -104,6 +104,9 @@ static uint8_t _rxbuf[CONF_GMAC_RXDESCR_NUM][CONF_GMAC_RXBUF_SIZE];
 
 COMPILER_PACK_RESET()
 
+
+//bool waiting_for_phy = false;
+
 /*!< Pointer to hpl device */
 static struct _mac_async_device *_gmac_dev = NULL;
 
@@ -520,19 +523,29 @@ int32_t _mac_async_write_phy_reg(struct _mac_async_device *const dev, uint16_t a
 
 int32_t _mac_async_read_phy_reg(struct _mac_async_device *const dev, uint16_t addr, uint16_t reg, uint16_t *data)
 {
-	hri_gmac_set_NCR_reg(dev->hw, GMAC_NCR_MPE);
-	hri_gmac_write_MAN_reg(dev->hw,
-	                       GMAC_MAN_OP(2) |            /* 0x02 read operation */
-	                           CONF_GMAC_CLTTO << 30 | /* Clause 22/45 operation */
-	                           GMAC_MAN_WTN(0x2) |     /* Must be written to 0x2 */
-	                           GMAC_MAN_PHYA(addr) | GMAC_MAN_REGA(reg));
+	
+//	if (!waiting_for_phy) {
+		hri_gmac_set_NCR_reg(dev->hw, GMAC_NCR_MPE);
+		hri_gmac_write_MAN_reg(dev->hw,
+							   GMAC_MAN_OP(2) |            /* 0x02 read operation */
+								   CONF_GMAC_CLTTO << 30 | /* Clause 22/45 operation */
+								   GMAC_MAN_WTN(0x2) |     /* Must be written to 0x2 */
+								   GMAC_MAN_PHYA(addr) | GMAC_MAN_REGA(reg));
 
-	/* Wait for the read operation complete */
-	while (!hri_gmac_get_NSR_IDLE_bit(dev->hw)) {
-	}
+//		waiting_for_phy=true;
+//	} else { //	if (!waiting_for_phy) {
 
-	*data = GMAC_MAN_DATA(hri_gmac_read_MAN_reg(dev->hw));
-	hri_gmac_clear_NCR_reg(dev->hw, GMAC_NCR_MPE);
+	
+		/* Wait for the read operation complete */
+		while (!hri_gmac_get_NSR_IDLE_bit(dev->hw)) {
+		}
+//		if (hri_gmac_get_NSR_IDLE_bit(dev->hw)) {
+
+			*data = GMAC_MAN_DATA(hri_gmac_read_MAN_reg(dev->hw));
+			hri_gmac_clear_NCR_reg(dev->hw, GMAC_NCR_MPE);
+//			waiting_for_phy=false;
+//		}
+//	} //	if (!waiting_for_phy) {
 
 	return ERR_NONE;
 }

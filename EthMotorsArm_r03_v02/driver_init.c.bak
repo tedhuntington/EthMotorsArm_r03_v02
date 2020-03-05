@@ -12,7 +12,7 @@
 #include <hal_init.h>
 
 /*! The buffer size for USART */
-#define USART_1_BUFFER_SIZE 16
+#define USART_1_BUFFER_SIZE 256//tph 16
 
 struct usart_async_descriptor USART_1;
 struct timer_descriptor       TIMER_0;
@@ -125,6 +125,7 @@ void I2C_0_init(void)
 	i2c_m_sync_init(&I2C_0, SERCOM3);
 	I2C_0_PORT_init();
 }
+
 
 /**
  * \brief Timer initialization function

@@ -25,45 +25,6 @@ struct i2c_m_sync_desc I2C_0;
 
 struct mac_async_descriptor ETHERNET_MAC_0;
 
-/**
- * \brief USART Clock initialization function
- *
- * Enables register interface and peripheral clock
- */
-void USART_1_CLOCK_init()
-{
-
-	hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_CORE, CONF_GCLK_SERCOM0_CORE_SRC | (1 << GCLK_PCHCTRL_CHEN_Pos));
-	hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM0_GCLK_ID_SLOW, CONF_GCLK_SERCOM0_SLOW_SRC | (1 << GCLK_PCHCTRL_CHEN_Pos));
-
-	hri_mclk_set_APBAMASK_SERCOM0_bit(MCLK);
-}
-
-/**
- * \brief USART pinmux initialization function
- *
- * Set each required pin to USART functionality
- */
-void USART_1_PORT_init()
-{
-
-	gpio_set_pin_function(PC17, PINMUX_PC17D_SERCOM0_PAD0);
-
-	gpio_set_pin_function(PC16, PINMUX_PC16D_SERCOM0_PAD1);
-}
-
-/**
- * \brief USART initialization function
- *
- * Enables USART peripheral, clocks and initializes USART driver
- */
-void USART_1_init(void)
-{
-	USART_1_CLOCK_init();
-	usart_async_init(&USART_1, SERCOM0, USART_1_buffer, USART_1_BUFFER_SIZE, (void *)NULL);
-	USART_1_PORT_init();
-}
-
 void USART_0_PORT_init(void)
 {
 
@@ -126,6 +87,44 @@ void I2C_0_init(void)
 	I2C_0_PORT_init();
 }
 
+/**
+ * \brief USART Clock initialization function
+ *
+ * Enables register interface and peripheral clock
+ */
+void USART_1_CLOCK_init()
+{
+
+	hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_CORE, CONF_GCLK_SERCOM6_CORE_SRC | (1 << GCLK_PCHCTRL_CHEN_Pos));
+	hri_gclk_write_PCHCTRL_reg(GCLK, SERCOM6_GCLK_ID_SLOW, CONF_GCLK_SERCOM6_SLOW_SRC | (1 << GCLK_PCHCTRL_CHEN_Pos));
+
+	hri_mclk_set_APBDMASK_SERCOM6_bit(MCLK);
+}
+
+/**
+ * \brief USART pinmux initialization function
+ *
+ * Set each required pin to USART functionality
+ */
+void USART_1_PORT_init()
+{
+
+	gpio_set_pin_function(PC16, PINMUX_PC16C_SERCOM6_PAD0);
+
+	gpio_set_pin_function(PC17, PINMUX_PC17C_SERCOM6_PAD1);
+}
+
+/**
+ * \brief USART initialization function
+ *
+ * Enables USART peripheral, clocks and initializes USART driver
+ */
+void USART_1_init(void)
+{
+	USART_1_CLOCK_init();
+	usart_async_init(&USART_1, SERCOM6, USART_1_buffer, USART_1_BUFFER_SIZE, (void *)NULL);
+	USART_1_PORT_init();
+}
 
 /**
  * \brief Timer initialization function
@@ -719,11 +718,10 @@ void system_init(void)
 
 	gpio_set_pin_function(PC25, GPIO_PIN_FUNCTION_OFF);
 
-	USART_1_init();
-
 	USART_0_init();
 
 	I2C_0_init();
+	USART_1_init();
 
 	TIMER_0_init();
 	ETHERNET_MAC_0_init();

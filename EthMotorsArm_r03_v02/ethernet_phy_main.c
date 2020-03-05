@@ -13,6 +13,7 @@
 
 struct ethernet_phy_descriptor ETHERNET_PHY_0_desc;
 
+
 void ETHERNET_PHY_0_init(void)
 {
 	mac_async_enable(&ETHERNET_MAC_0);
@@ -26,6 +27,7 @@ void ETHERNET_PHY_0_example(void)
 {
 	bool    link_state;
 	int32_t rst;
+	
 	/* Restart an auto-negotiation */
 	rst = ethernet_phy_restart_autoneg(&ETHERNET_PHY_0_desc);
 	while (rst != ERR_NONE) {
@@ -35,9 +37,9 @@ void ETHERNET_PHY_0_example(void)
 	do {
 		rst = ethernet_phy_get_link_status(&ETHERNET_PHY_0_desc, &link_state);
 	} while (rst == ERR_NONE && link_state == false);  //tph true
+
 }
-
-
+	
 void ethernet_phys_init(void)
 {
 	//set PHY reset high
